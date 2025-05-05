@@ -4,47 +4,50 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.foundation.*
-import androidx.compose.material.Button
-import androidx.compose.material.ButtonDefaults
-import androidx.compose.material.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
@@ -59,10 +62,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.battlecommand.R.*
+import com.example.battlecommand.R.drawable
 
 
 class MainActivity : ComponentActivity() {
@@ -102,7 +105,7 @@ const val GRID_SIZE = 6
     )
 @Composable
 private fun PreviewFunction() {
-    MainMenu(5 ) {}
+    BattleArmadaGameScreen(5)
 }
 
 @Composable
@@ -315,7 +318,7 @@ fun GameDescriptionDialog(
                 color = Color.White,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp)
+                    .padding(10.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -351,44 +354,62 @@ fun BattleArmadaGameScreen(paddingValues: Int) {
     val player1Mode = remember { mutableStateOf("Attack") }
     val player2Mode = remember { mutableStateOf("Attack") }
     val (screenWidth, screenHeight) = getScreenSizeDp()
+
     Box(modifier = Modifier
         .fillMaxSize()
         .background(color = Color.Transparent)) {
-        Column(modifier = Modifier.fillMaxSize()) {
 
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Upper half of the game screen
             Box(modifier = Modifier
-                .height((screenHeight / 2).dp)
-                .background(color = Color.Cyan, shape = RectangleShape)
+                .weight(1f)
+                .background(color = Color.Cyan)
                 .fillMaxWidth(),
-                contentAlignment = Alignment.Center) {
+                contentAlignment = Alignment.TopCenter) {
+
+                // Action Bar for Player 1
+                ActionBarAI(
+                    onAttack = {
+                        player1Mode.value = "Attack"
+                    },
+                    onFortify = {
+                        player1Mode.value = "Fortify"
+                    }
+                )
+
+                // Game Grid Board for Player 1
                 GameGridBoard()
+
+                // Ship Bar with draggable ships for Player 1
                 Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter),
-                    contentAlignment = Alignment.Center) {
-                    ActionBarP1(
-                        onAttack = {
-                            player1Mode.value = "Attack"
-                        },
-                        onFortify = {
-                            player1Mode.value = "Fortify"
-                        }
+                    .rotate(180f)
+                    .align(Alignment.BottomCenter)) {
+                    ShipBar(
+                        ships = player1Ships
                     )
                 }
             }
 
+            // Lower half of the game screen (similar to the upper half but for Player 2)
             Box(modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(color = Color.DarkGray, shape = RectangleShape),
-                contentAlignment = Alignment.Center
+                .background(color = Color.DarkGray, shape = RectangleShape)
             ) {
+                // Ship Bar for Player 2
+                ShipBar(
+                    ships = player2Ships, // Change this dynamically depending on whose turn it is
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+
+                // Game Grid Board for Player 2
                 GameGridBoard()
+                // Action Bar for Player 2 (similar to Player 1)
                 Box(modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter),
                     contentAlignment = Alignment.Center) {
-                    ActionBarP2(
+                    ActionBarP(
                         onAttack = {
                             player2Mode.value = "Attack"
                         },
@@ -402,46 +423,72 @@ fun BattleArmadaGameScreen(paddingValues: Int) {
     }
 }
 
-@Composable
-fun GridCell(row: Int, col: Int, isHighlighted: Boolean = false) {
-    Box(
-        modifier = Modifier
-            .shadow(
-                elevation = if (isHighlighted) 8.dp else 4.dp,
-                shape = RoundedCornerShape(8.dp),
-                clip = false,
-                ambientColor = Color(
-                    0xFF000000
-                )
-            )
-            .size(42.dp)
-            .border(1.dp, Color.White, shape = RoundedCornerShape(4.dp))
-            .background(
-                if (isHighlighted) Color(0xFF64B5F6) else Color(0xFFFFFFFF),
-                shape = RoundedCornerShape(4.dp)
-            )
-    )
-}
+
 @Composable
 fun GameGridBoard(
     modifier: Modifier = Modifier,
     player: String = "Player",
-
 ) {
-    Column(modifier = modifier.background(Color.Transparent),
-        verticalArrangement = Arrangement.spacedBy(8.dp)) { //give the background colour of grid
-        repeat(GRID_SIZE) { row ->
-            Row (horizontalArrangement = Arrangement.spacedBy(8.dp)){
-                repeat(GRID_SIZE) { col ->
-                    GridCell(row = row, col = col)
+    val cellSize = 42.dp
+    val spacing = 8.dp
+
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(spacing)) {
+            repeat(GRID_SIZE) { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing)) {
+                    repeat(GRID_SIZE) { col ->
+                        GridCell(
+                            row = row,
+                            col = col,
+                            onCellClick = {clickededRow, clickedCol ->
+
+                            }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+
 @Composable
-fun ActionBarP1(onAttack: (Boolean) -> Unit, onFortify: (Boolean) -> Unit) {
+fun GridCell(
+    row: Int,
+    col: Int,
+    modifier: Modifier = Modifier,
+    onCellClick:(Int,Int) -> Unit
+) {
+    var cellColor by remember { mutableStateOf(Color(0xFFF5F5F5)) }
+    Box(
+        modifier = modifier
+            .size(42.dp)
+            .border(1.dp, cellColor, shape = RoundedCornerShape(4.dp))
+            .clickable(enabled = true, onClick = {
+                // Toggle cell color based on its current state
+                cellColor = if (cellColor == Color(0xFFF5F5F5)) {
+                    Color.Transparent
+                } else {
+                    Color(0xFFF5F5F5)
+                }
+                // Call the onCellClick to handle the position and place a ship if necessary
+                onCellClick(row, col)
+
+
+            }
+            )
+            .background(
+                color = cellColor,
+                shape = RoundedCornerShape(4.dp)
+            )
+
+    )
+}
+
+
+
+@Composable
+fun ActionBarAI(onAttack: (Boolean) -> Unit, onFortify: (Boolean) -> Unit) {
     var isAttackMode by remember { mutableStateOf(true) } // true = Attack, false = Fortify
     val activeCount by remember { mutableIntStateOf(3) } //both will get three shots initially
 
@@ -466,6 +513,7 @@ fun ActionBarP1(onAttack: (Boolean) -> Unit, onFortify: (Boolean) -> Unit) {
 
             Box(modifier = Modifier.fillMaxSize()
                 .rotate(180f)) {
+                //using a switch to change between attack and defence
                 GameModeSwitch(
                     isAttackMode = isAttackMode,
                     isFortifyMode = {
@@ -483,14 +531,15 @@ fun ActionBarP1(onAttack: (Boolean) -> Unit, onFortify: (Boolean) -> Unit) {
     }
 }
 @Composable
-fun ActionBarP2(onAttack: (Boolean) -> Unit, onFortify: (Boolean) -> Unit) {
+fun ActionBarP(onAttack: (Boolean) -> Unit, onFortify: (Boolean) -> Unit) {
     var isAttackMode by remember { mutableStateOf(true) } // true = Attack, false = Fortify
     val activeCount by remember { mutableIntStateOf(3) } //both will get three shots initially
+    //the action bar changes colour according to the mode
     Box(modifier = Modifier
         .fillMaxWidth()
         .height(60.dp)
         .background(
-            color = if (isAttackMode) Color(0xFFEF6F6F) else Color(0xFFEEEEEE),
+            color = if (isAttackMode) Color(0xFFEF6F6F) else Color(0xFFEEEEEE),//colour change logic
             shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
         ),
         contentAlignment = Alignment.Center
@@ -528,7 +577,7 @@ fun GameModeSwitch(isAttackMode: Boolean,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxSize()) {
-
+        // the no. of chances for each player
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             repeat(3) { index ->
                 Box(
@@ -542,7 +591,7 @@ fun GameModeSwitch(isAttackMode: Boolean,
                 )
             }
         }
-
+        // game mode text according to mode
         Text(
             text = if (isAttackMode) "ATTACK" else "DEFEND",
             color = if (isAttackMode) Color.White else Color(0xFF565656),
@@ -550,7 +599,7 @@ fun GameModeSwitch(isAttackMode: Boolean,
             fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.align(Alignment.CenterVertically)
         )
-
+        //Actual Switch for opting between two modes
         Switch(
             checked = isAttackMode,
             onCheckedChange = {
@@ -576,5 +625,103 @@ fun GameModeSwitch(isAttackMode: Boolean,
             )
         )
     }
+}
+
+enum class ShipType(val size: Int, val iconRes: Int) {
+    SMALL(1, R.drawable.small_ship),
+    MEDIUM(2, R.drawable.medium_ship),
+    LARGE(3, R.drawable.large_ship)
+}
+
+data class Ship(
+    val id: Int,                 // Unique ID to differentiate even similar ships
+    val type: ShipType,
+    val isDamaged: Boolean = false,
+    var position: Pair<Int, Int>? = null, // optional: row, col on grid
+)
+
+val player2Ships = listOf(
+    Ship(id = 1, type = ShipType.SMALL),
+    Ship(id = 2, type = ShipType.SMALL),
+    Ship(id = 3, type = ShipType.MEDIUM),
+    Ship(id = 4, type = ShipType.LARGE)
+)
+
+val player1Ships = listOf(
+    Ship(id = 1, type = ShipType.SMALL),
+    Ship(id = 2, type = ShipType.SMALL),
+    Ship(id = 3, type = ShipType.MEDIUM),
+    Ship(id = 4, type = ShipType.LARGE)
+)
+
+
+@Composable
+fun ShipBar(
+    ships: List<Ship>,
+    modifier: Modifier = Modifier
+) {
+    val maxShipHeight = ships.maxOf {
+        when (it.type) {
+            ShipType.SMALL -> 28.dp
+            ShipType.MEDIUM -> 48.dp
+            ShipType.LARGE -> 66.dp
+        }
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center  // Centers everything inside
+    ) {
+        // Bottom line
+        Canvas(
+            modifier = Modifier
+                .height(4.dp)
+                .width(228.dp)
+                .align(Alignment.TopCenter)
+                .padding(top = maxShipHeight - 6.dp)
+        ) {
+            drawLine(
+                color = Color.White,
+                start = Offset(0f, 0f),
+                end = Offset(size.width, 0f),
+                strokeWidth = 4f
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .wrapContentWidth()
+                .padding(bottom = 4.dp)
+                .clickable(enabled = true, onClick = {}),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ships.forEach { ship ->
+                val shipSize = when (ship.type) {
+                    ShipType.SMALL -> 28.dp
+                    ShipType.MEDIUM -> 52.dp
+                    ShipType.LARGE -> 66.dp
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(shipSize)
+                        .background(Color.Transparent, shape = RoundedCornerShape(6.dp))
+                        .padding(bottom = if(ship.type == ShipType.LARGE) 6.dp else 0.dp) ,
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = ship.type.iconRes),
+                        contentDescription = ship.type.name,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
+    }
+}
+
+fun PlaceShip(row: Int, col: Int, ship: Ship) {
+    
 }
 
